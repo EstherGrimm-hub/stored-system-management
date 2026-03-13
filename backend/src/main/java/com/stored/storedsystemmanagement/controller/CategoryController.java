@@ -16,7 +16,6 @@ public class CategoryController {
 
     private final CategoryService categoryService;
 
-    // API Thêm mới Danh mục
     @PostMapping
     public ResponseEntity<CategoryResponseDTO> createCategory(@Valid @RequestBody CategoryRequestDTO requestDTO) {
         CategoryResponseDTO response = categoryService.createCategory(requestDTO);

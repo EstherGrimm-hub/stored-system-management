@@ -31,7 +31,6 @@ public class ProductController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    // API Cập nhật Sản phẩm (Sử dụng phương thức PUT)
     @PutMapping("/{id}")
     public ResponseEntity<ProductResponseDTO> updateProduct(
             @PathVariable Long id, 
@@ -41,7 +40,6 @@ public class ProductController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    // API Xóa Sản phẩm (Sử dụng phương thức DELETE)
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteProduct(@PathVariable Long id) {
         productService.deleteProduct(id);
