@@ -23,6 +23,71 @@ const Dashboard = ({ storeId }) => {
   const [timeFilter, setTimeFilter] = useState('today');
   const [activeStoreId, setActiveStoreId] = useState(storeId || null);
 
+  const exportReport = () => {
+    try {
+      const content = JSON.stringify({
+        ...data,
+        chartData: data.chartData || { labels: [], data: [] },
+        recentOrders: data.recentOrders || []
+      }, null, 2);
+      const blob = new Blob([content], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `dashboard-report-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      message.success('Xuất báo cáo dashboard thành công.');
+    } catch (error) {
+      console.error(error);
+      message.error('Xuất báo cáo thất bại.');
+    }
+  };
+
+  const exportData = async () => {
+    try {
+      setLoading(true);
+      const query = activeStoreId ? `?storeId=${activeStoreId}` : '';
+      const ordersRes = await axiosInstance.get(`/api/v1/orders${query}`);
+      const orders = ordersRes.data || [];
+      if (!orders.length) {
+        message.warning('Không có dữ liệu đơn hàng để xuất.');
+        return;
+      }
+
+      const csvHeader = ['Mã hóa đơn', 'Thời gian', 'Tổng tiền', 'Trạng thái'];
+      const csvRows = [csvHeader.join(',')];
+      orders.forEach((ord) => {
+        const row = [
+          `"${ord.orderCode || ''}"`,
+          `"${new Date(ord.createdAt).toLocaleString('vi-VN')}"`,
+          ord.finalAmount || 0,
+          ord.status || ''
+        ];
+        csvRows.push(row.join(','));
+      });
+
+      const csvContent = csvRows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `orders-export-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      message.success('Xuất dữ liệu đơn hàng thành công.');
+    } catch (error) {
+      console.error(error);
+      message.error('Xuất dữ liệu thất bại.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleQuickAction = (action) => {
     switch (action) {
       case 'newOrder':
@@ -35,13 +100,13 @@ const Dashboard = ({ storeId }) => {
         navigate('/admin/inventory');
         break;
       case 'importExport':
-        message.info('Chức năng xuất nhập kho đang được phát triển.');
+        navigate('/admin/import');
         break;
       case 'exportReport':
-        message.info('Chức năng xuất báo cáo đang được phát triển.');
+        exportReport();
         break;
       case 'exportData':
-        message.info('Chức năng xuất dữ liệu đang được phát triển.');
+        exportData();
         break;
       default:
         message.error('Hành động không xác định');
@@ -167,7 +232,7 @@ const Dashboard = ({ storeId }) => {
                 Kiểm kho
               </Button>
               <Button icon={<ArrowUpOutlined />} onClick={() => handleQuickAction('importExport')}>
-                Xuất/nhập kho
+                Nhập kho
               </Button>
               <Button icon={<BarChartOutlined />} onClick={() => handleQuickAction('exportReport')}>
                 Xuất báo cáo

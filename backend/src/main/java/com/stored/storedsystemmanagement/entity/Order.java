@@ -5,6 +5,9 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Table(name = "orders")
@@ -12,6 +15,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Order {
 
     @Id
@@ -47,11 +51,13 @@ public class Order {
     // 1. Hóa đơn này do thu ngân nào tạo?
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_id", nullable = false)
+    @JsonIgnore
     private User createdBy; 
 
     // 2. Hóa đơn này thuộc cửa hàng nào? (Bắt buộc cho mô hình KiotViet)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_id", nullable = false)
+    @JsonIgnore
     private Store store;
 
     // 3. Chi tiết các mặt hàng đã mua

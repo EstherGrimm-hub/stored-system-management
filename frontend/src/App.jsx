@@ -19,6 +19,8 @@ import UserManagement from './pages/admin/UserManagement';
 import UserDetail from './pages/admin/UserDetail';
 import StoreDetail from './pages/admin/StoreDetail';
 import ImpersonateDashboard from './pages/admin/ImpersonateDashboard';
+import Categories from './pages/admin/Categories';
+import Import from './pages/admin/Import';
 
 // Một component nhỏ để bảo vệ Route, nếu chưa có Token thì đá ra trang Login
 const ProtectedRoute = ({ children }) => {
@@ -107,6 +109,8 @@ function App() {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="products" element={<Products />} />
+          <Route path="categories" element={<Categories />} />
+          <Route path="import" element={<Import />} />
           <Route path="orders" element={<Orders />} />
           <Route path="inventory" element={<Inventory />} />
         </Route>

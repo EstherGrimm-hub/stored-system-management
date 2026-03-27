@@ -3,6 +3,9 @@ package com.stored.storedsystemmanagement.entity;
 import lombok.*;
 import javax.persistence.*;
 import java.math.BigDecimal;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Table(name = "order_details")
@@ -10,6 +13,7 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class OrderDetail {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -17,6 +21,7 @@ public class OrderDetail {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
+    @JsonIgnore
     private Order order;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -25,9 +30,12 @@ public class OrderDetail {
 
     private int quantity;
 
-    @Column(precision = 18, scale = 2)
+    @Column(name = "unit_price", precision = 18, scale = 2, nullable = false)
     private BigDecimal unitPrice;
 
-    @Column(precision = 18, scale = 2)
-    private BigDecimal totalPrice; // Cột bị thiếu
+    @Column(name = "sub_total", precision = 18, scale = 2, nullable = false)
+    private BigDecimal subTotal;
+
+    @Column(name = "total_price", precision = 18, scale = 2)
+    private BigDecimal totalPrice;
 }

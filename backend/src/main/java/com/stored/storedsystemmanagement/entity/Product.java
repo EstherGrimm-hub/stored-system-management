@@ -4,6 +4,9 @@ import javax.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Table(name = "products")
@@ -11,6 +14,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Product {
 
     @Id
@@ -48,11 +52,13 @@ public class Product {
     // Mối quan hệ Nhiều-1: Nhiều Sản phẩm thuộc về 1 Danh mục
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = true)
+    @JsonIgnore
     private Category category;
 
     // Mỗi sản phẩm thuộc về 1 cửa hàng (branch)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_id")
+    @JsonIgnore
     private Store store;
 
     // Tự động gán thời gian lúc mới tạo DB

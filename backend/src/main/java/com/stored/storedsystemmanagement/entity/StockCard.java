@@ -23,9 +23,24 @@ public class StockCard {
     @JoinColumn(name = "store_id", nullable = false)
     private Store store;
 
+    @Column(name = "transaction_type", nullable = true)
+    private String transactionType; // Cột cũ tương ứng trong DB
+
+    @Column(name = "change_type", nullable = true)
     private String changeType; // Bán, Nhập, Khởi tạo
+
+    @Column(name = "quantity_changed", nullable = true)
+    private Integer quantityChanged;
+
+    @Column(name = "quantity_change")
     private int quantityChange;
+
+    @Column(name = "balance", nullable = true)
+    private Integer balance;
+
+    @Column(name = "balance_quantity")
     private int balanceQuantity;
+
     private String referenceCode;
     private String note;
 

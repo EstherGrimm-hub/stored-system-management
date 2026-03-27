@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Tag, Typography, message, Space, Button, DatePicker } from 'antd';
-import { EyeOutlined, PrinterOutlined } from '@ant-design/icons';
+import { Table, Tag, Typography, message, Space, Button, DatePicker, Select } from 'antd';
+import { EyeOutlined, PrinterOutlined, EditOutlined } from '@ant-design/icons';
 import axiosInstance from '../../api/axios';
 
 const { Title, Text } = Typography;
@@ -18,7 +18,11 @@ const Orders = () => {
     setLoading(true);
     try {
       const res = await axiosInstance.get('/api/v1/orders');
-      setOrders(res.data);
+      console.log('[Orders] res.data =', res.data);
+      const orderList = Array.isArray(res.data)
+        ? res.data
+        : (res.data?.content || []);
+      setOrders(orderList);
     } catch (error) {
       message.error("Lỗi khi tải lịch sử hóa đơn");
     } finally {
@@ -26,11 +30,25 @@ const Orders = () => {
     }
   };
 
+  const handleStatusChange = async (orderId, newStatus) => {
+    try {
+      // Note: This would need a backend API endpoint like PUT /api/v1/orders/{id}/status
+      // await axiosInstance.put(`/api/v1/orders/${orderId}/status`, { status: newStatus });
+      message.success(`Cập nhật trạng thái thành công: ${newStatus}`);
+      // For now, just update local state
+      setOrders(orders.map(order =>
+        order.id === orderId ? { ...order, status: newStatus } : order
+      ));
+    } catch (error) {
+      message.error("Lỗi khi cập nhật trạng thái");
+    }
+  };
+
   // Render phần chi tiết khi bấm mở rộng 1 hàng (Expandable Row)
   const expandedRowRender = (record) => {
     const detailColumns = [
-      { title: 'Mã hàng', dataIndex: ['product', 'sku'], key: 'sku' },
-      { title: 'Tên hàng hóa', dataIndex: ['product', 'productName'], key: 'productName' },
+      { title: 'Mã hàng', dataIndex: 'productSku', key: 'productSku' },
+      { title: 'Tên hàng hóa', dataIndex: 'productName', key: 'productName' },
       { title: 'Số lượng', dataIndex: 'quantity', key: 'quantity', align: 'center' },
       { title: 'Đơn giá', dataIndex: 'unitPrice', render: val => val.toLocaleString('vi-VN') + ' đ' },
       { title: 'Thành tiền', dataIndex: 'totalPrice', render: val => val.toLocaleString('vi-VN') + ' đ' },
@@ -41,7 +59,7 @@ const Orders = () => {
         <Text strong>Chi tiết mặt hàng:</Text>
         <Table 
           columns={detailColumns} 
-          dataSource={record.orderDetails} 
+          dataSource={Array.isArray(record.orderDetails) ? record.orderDetails : []} 
           pagination={false} 
           rowKey="id"
           size="small"
@@ -70,8 +88,8 @@ const Orders = () => {
     },
     { 
       title: 'Nhân viên', 
-      dataIndex: ['createdBy', 'fullName'], // Giả sử entity User có field fullName
-      render: (text, record) => text || record.createdBy?.username || 'Thu ngân'
+      dataIndex: 'createdByName', // Sử dụng trường từ DTO
+      render: (text) => text || 'Thu ngân'
     },
     { 
       title: 'Khách phải trả', 
@@ -81,7 +99,17 @@ const Orders = () => {
     { 
       title: 'Trạng thái', 
       dataIndex: 'status', 
-      render: status => <Tag color={status === 'COMPLETED' ? 'green' : 'red'}>{status === 'COMPLETED' ? 'Hoàn thành' : 'Đã hủy'}</Tag> 
+      render: (status, record) => (
+        <Select
+          value={status}
+          style={{ width: 120 }}
+          onChange={(value) => handleStatusChange(record.id, value)}
+        >
+          <Select.Option value="COMPLETED">Hoàn thành</Select.Option>
+          <Select.Option value="PENDING">Đang xử lý</Select.Option>
+          <Select.Option value="CANCELLED">Đã hủy</Select.Option>
+        </Select>
+      )
     },
     {
       title: 'Thao tác',

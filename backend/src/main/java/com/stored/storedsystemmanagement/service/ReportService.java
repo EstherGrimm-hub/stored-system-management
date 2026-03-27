@@ -39,7 +39,23 @@ public class ReportService {
         response.put("todayRevenue", todayRevenue != null ? todayRevenue : BigDecimal.ZERO);
         response.put("todayOrders", todayOrders != null ? todayOrders : 0);
         response.put("lowStockWarning", lowStockCount);
-        response.put("recentOrders", orderRepository.findTop5ByStoreIdOrderByCreatedAtDesc(storeId));
+
+        // Map kết quả recentOrders thành structure gọn, tránh serialize lazy proxy gây 400
+        List<Map<String, Object>> recentOrders = orderRepository.findTop5ByStoreIdOrderByCreatedAtDesc(storeId)
+            .stream()
+            .map(order -> {
+                Map<String, Object> o = new HashMap<>();
+                o.put("id", order.getId());
+                o.put("orderCode", order.getOrderCode());
+                o.put("totalAmount", order.getTotalAmount());
+                o.put("finalAmount", order.getFinalAmount());
+                o.put("customerTendered", order.getCustomerTendered());
+                o.put("changeAmount", order.getChangeAmount());
+                o.put("status", order.getStatus());
+                o.put("createdAt", order.getCreatedAt());
+                return o;
+            }).collect(Collectors.toList());
+        response.put("recentOrders", recentOrders);
 
         return response;
     }
@@ -59,7 +75,21 @@ public class ReportService {
         response.put("todayOrders", todayOrders != null ? todayOrders : 0);
         response.put("lowStockWarning", lowStockCount);
         // For admin, maybe get recent orders across all stores
-        response.put("recentOrders", orderRepository.findTop5ByOrderByCreatedAtDesc());
+        List<Map<String, Object>> adminRecentOrders = orderRepository.findTop5ByOrderByCreatedAtDesc()
+            .stream()
+            .map(order -> {
+                Map<String, Object> o = new HashMap<>();
+                o.put("id", order.getId());
+                o.put("orderCode", order.getOrderCode());
+                o.put("totalAmount", order.getTotalAmount());
+                o.put("finalAmount", order.getFinalAmount());
+                o.put("customerTendered", order.getCustomerTendered());
+                o.put("changeAmount", order.getChangeAmount());
+                o.put("status", order.getStatus());
+                o.put("createdAt", order.getCreatedAt());
+                return o;
+            }).collect(Collectors.toList());
+        response.put("recentOrders", adminRecentOrders);
 
         return response;
     }

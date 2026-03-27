@@ -8,7 +8,9 @@ import {
   CodeSandboxOutlined,
   LogoutOutlined,
   UserOutlined,
-  ShopOutlined
+  ShopOutlined,
+  AppstoreOutlined,
+  ImportOutlined
 } from '@ant-design/icons';
 import axiosInstance from '../api/axios';
 
@@ -51,6 +53,16 @@ const AdminLayout = () => {
       key: '/admin/products',
       icon: <BarcodeOutlined />,
       label: 'Hàng hóa',
+    },
+    {
+      key: '/admin/categories',
+      icon: <AppstoreOutlined />,
+      label: 'Danh mục',
+    },
+    {
+      key: '/admin/import',
+      icon: <ImportOutlined />,
+      label: 'Nhập kho',
     },
     {
       key: '/admin/orders',

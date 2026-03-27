@@ -4,6 +4,7 @@ import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import javax.persistence.*;
 import java.util.Collection;
@@ -37,6 +38,7 @@ public class User implements UserDetails {
     // Liên kết nhân viên này với cửa hàng (Cốt lõi của Multi-tenant)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_id")
+    @JsonIgnore
     private Store store;
 
     // --- CÁC HÀM BẮT BUỘC CỦA SPRING SECURITY ---

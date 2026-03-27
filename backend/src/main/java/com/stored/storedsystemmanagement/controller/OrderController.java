@@ -1,6 +1,7 @@
 package com.stored.storedsystemmanagement.controller;
 
 import com.stored.storedsystemmanagement.dto.OrderRequestDTO;
+import com.stored.storedsystemmanagement.dto.OrderResponseDTO;
 import com.stored.storedsystemmanagement.entity.Order;
 import com.stored.storedsystemmanagement.entity.User;
 import com.stored.storedsystemmanagement.repository.OrderRepository;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.validation.Valid;
 import java.security.Principal;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/orders")
@@ -38,10 +40,18 @@ public class OrderController {
 
     // API: Chủ shop xem danh sách hóa đơn đã bán
     @GetMapping
-    public ResponseEntity<List<Order>> getOrdersHistory(Principal principal) {
+    public ResponseEntity<List<OrderResponseDTO>> getOrdersHistory(Principal principal) {
         User user = getCurrentUser(principal);
-        // Lấy tất cả hóa đơn của cửa hàng, sắp xếp mới nhất lên đầu
-        List<Order> orders = orderRepository.findByStoreIdOrderByCreatedAtDesc(user.getStore().getId());
-        return ResponseEntity.ok(orders);
+        List<Order> orders;
+        if (user.getStore() != null) {
+            orders = orderRepository.findByStoreIdOrderByCreatedAtDesc(user.getStore().getId());
+        } else {
+            // Trường hợp ADMIN hoặc user chưa map store: trả hết để không trống lịch sử
+            orders = orderRepository.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
+        }
+        List<OrderResponseDTO> response = orders.stream()
+                .map(orderService::convertToResponseDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
     }
 }

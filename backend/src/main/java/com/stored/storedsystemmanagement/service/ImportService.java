@@ -69,8 +69,11 @@ public class ImportService {
                     .product(product)
                     .referenceCode(receiptCode)
                     .changeType("IMPORT") // Loại giao dịch: Nhập hàng
+                    .transactionType("IMPORT")
                     .quantityChange(item.getQuantity()) // Nhập thêm nên mang dấu dương (+)
+                    .quantityChanged(item.getQuantity())
                     .balanceQuantity(product.getStockQuantity())
+                    .balance(product.getStockQuantity())
                     .build();
             stockCardsToSave.add(stockCard);
         }

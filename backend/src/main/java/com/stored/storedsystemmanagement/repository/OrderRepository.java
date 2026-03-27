@@ -32,9 +32,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     List<Order> findTop5ByOrderByCreatedAtDesc();
 
-    @Query(value = "SELECT CAST(created_at AS DATE), SUM(final_amount) FROM orders WHERE store_id = :storeId AND created_at >= :startDate AND created_at <= :endDate GROUP BY CAST(created_at AS DATE) ORDER BY CAST(created_at AS DATE)", nativeQuery = true)
+    @Query(value = "SELECT CAST(created_at AS DATE) AS report_date, SUM(final_amount) AS total_revenue FROM orders WHERE store_id = :storeId AND created_at >= :startDate AND created_at <= :endDate GROUP BY CAST(created_at AS DATE) ORDER BY CAST(created_at AS DATE)", nativeQuery = true)
     List<Object[]> getRevenueByDateForStore(@Param("storeId") Long storeId, @Param("startDate") java.time.LocalDateTime startDate, @Param("endDate") java.time.LocalDateTime endDate);
 
-    @Query(value = "SELECT CAST(created_at AS DATE), SUM(final_amount) FROM orders WHERE created_at >= :startDate AND created_at <= :endDate GROUP BY CAST(created_at AS DATE) ORDER BY CAST(created_at AS DATE)", nativeQuery = true)
+    @Query(value = "SELECT CAST(created_at AS DATE) AS report_date, SUM(final_amount) AS total_revenue FROM orders WHERE created_at >= :startDate AND created_at <= :endDate GROUP BY CAST(created_at AS DATE) ORDER BY CAST(created_at AS DATE)", nativeQuery = true)
     List<Object[]> getRevenueByDateAll(@Param("startDate") java.time.LocalDateTime startDate, @Param("endDate") java.time.LocalDateTime endDate);
 }

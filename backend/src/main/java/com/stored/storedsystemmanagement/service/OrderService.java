@@ -4,6 +4,8 @@ import com.stored.storedsystemmanagement.entity.*;
 import com.stored.storedsystemmanagement.repository.*;
 import com.stored.storedsystemmanagement.dto.OrderRequestDTO;
 import com.stored.storedsystemmanagement.dto.OrderDetailRequestDTO;
+import com.stored.storedsystemmanagement.dto.OrderResponseDTO;
+import com.stored.storedsystemmanagement.dto.OrderDetailResponseDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -12,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.UUID;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -73,8 +77,11 @@ public class OrderService {
                     .product(product)
                     .store(store)
                     .changeType("SELL") // Loại giao dịch: Bán hàng
+                    .transactionType("SELL")
                     .quantityChange(-itemReq.getQuantity()) // Số lượng âm (xuất kho)
+                    .quantityChanged(-itemReq.getQuantity())
                     .balanceQuantity(product.getStockQuantity()) // Tồn kho cuối cùng
+                    .balance(product.getStockQuantity())
                     .referenceCode(order.getOrderCode())
                     .note("Bán lẻ cho khách vãng lai")
                     .build();
@@ -89,6 +96,7 @@ public class OrderService {
                     .product(product)
                     .quantity(itemReq.getQuantity())
                     .unitPrice(product.getSellingPrice())
+                    .subTotal(itemTotal)
                     .totalPrice(itemTotal)
                     .build();
 
@@ -115,5 +123,35 @@ public class OrderService {
             log.error("Lỗi bất ngờ khi tạo đơn bán lẻ: {}", e.getMessage(), e);
             throw new RuntimeException("Lỗi hệ thống khi tạo đơn bán lẻ. Vui lòng thử lại sau.", e);
         }
+    }
+
+    public OrderResponseDTO convertToResponseDTO(Order order) {
+        return OrderResponseDTO.builder()
+                .id(order.getId())
+                .orderCode(order.getOrderCode())
+                .totalAmount(order.getTotalAmount())
+                .discountAmount(order.getDiscountAmount())
+                .finalAmount(order.getFinalAmount())
+                .customerTendered(order.getCustomerTendered())
+                .changeAmount(order.getChangeAmount())
+                .status(order.getStatus())
+                .createdAt(order.getCreatedAt())
+                .createdByName(order.getCreatedBy() != null ? order.getCreatedBy().getFullName() : null)
+                .orderDetails(order.getOrderDetails() != null ? order.getOrderDetails().stream()
+                        .map(this::convertOrderDetailToResponseDTO)
+                        .collect(Collectors.toList()) : null)
+                .build();
+    }
+
+    private OrderDetailResponseDTO convertOrderDetailToResponseDTO(OrderDetail orderDetail) {
+        return OrderDetailResponseDTO.builder()
+                .id(orderDetail.getId())
+                .productSku(orderDetail.getProduct() != null ? orderDetail.getProduct().getSku() : null)
+                .productName(orderDetail.getProduct() != null ? orderDetail.getProduct().getProductName() : null)
+                .quantity(orderDetail.getQuantity())
+                .unitPrice(orderDetail.getUnitPrice())
+                .subTotal(orderDetail.getSubTotal())
+                .totalPrice(orderDetail.getTotalPrice())
+                .build();
     }
 }
