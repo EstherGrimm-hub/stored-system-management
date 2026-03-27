@@ -2,8 +2,10 @@ package com.stored.storedsystemmanagement.repository;
 
 import com.stored.storedsystemmanagement.entity.StockCard;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import java.util.List;
 
-@Repository
 public interface StockCardRepository extends JpaRepository<StockCard, Long> {
+    
+    // Lấy thẻ kho của 1 sản phẩm, sắp xếp mới nhất lên đầu
+    List<StockCard> findByStoreIdAndProductIdOrderByCreatedAtDesc(Long storeId, Long productId);
 }

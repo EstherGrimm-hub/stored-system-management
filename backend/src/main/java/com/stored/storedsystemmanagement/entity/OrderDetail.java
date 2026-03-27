@@ -1,7 +1,7 @@
 package com.stored.storedsystemmanagement.entity;
 
-import jakarta.persistence.*;
 import lombok.*;
+import javax.persistence.*;
 import java.math.BigDecimal;
 
 @Entity
@@ -11,7 +11,6 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 public class OrderDetail {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -24,12 +23,11 @@ public class OrderDetail {
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
-    @Column(nullable = false)
-    private Integer quantity; // Số lượng mua
+    private int quantity;
 
-    @Column(nullable = false, precision = 18, scale = 2)
-    private BigDecimal unitPrice; // Giá bán TẠI THỜI ĐIỂM MUA
+    @Column(precision = 18, scale = 2)
+    private BigDecimal unitPrice;
 
-    @Column(nullable = false, precision = 18, scale = 2)
-    private BigDecimal subTotal; // Thành tiền (quantity * unitPrice)
+    @Column(precision = 18, scale = 2)
+    private BigDecimal totalPrice; // Cột bị thiếu
 }

@@ -1,6 +1,7 @@
 package com.stored.storedsystemmanagement.repository;
 
 import com.stored.storedsystemmanagement.entity.Category;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -8,4 +9,8 @@ import org.springframework.stereotype.Repository;
 public interface CategoryRepository extends JpaRepository<Category, Long> {
     // Hàm này giúp kiểm tra xem tên danh mục đã tồn tại trong database chưa
     boolean existsByCategoryName(String categoryName);
+
+    List<Category> findByStoreId(Long storeId);
+
+    boolean existsByCategoryNameAndStoreId(String categoryName, Long storeId);
 }

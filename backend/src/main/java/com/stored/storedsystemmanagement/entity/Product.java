@@ -1,6 +1,6 @@
 package com.stored.storedsystemmanagement.entity;
 
-import jakarta.persistence.*;
+import javax.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -23,7 +23,7 @@ public class Product {
     @Column(unique = true, length = 50)
     private String barcode; // Mã vạch để quét tít tít ở quầy POS
 
-    @Column(nullable = false, length = 255)
+    @Column(nullable = false, length = 255, columnDefinition = "NVARCHAR(255)")
     private String productName;
 
     @Column(precision = 18, scale = 2)
@@ -47,8 +47,13 @@ public class Product {
 
     // Mối quan hệ Nhiều-1: Nhiều Sản phẩm thuộc về 1 Danh mục
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id", nullable = false)
+    @JoinColumn(name = "category_id", nullable = true)
     private Category category;
+
+    // Mỗi sản phẩm thuộc về 1 cửa hàng (branch)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id")
+    private Store store;
 
     // Tự động gán thời gian lúc mới tạo DB
     @PrePersist

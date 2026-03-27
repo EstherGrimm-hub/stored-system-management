@@ -2,123 +2,122 @@ package com.stored.storedsystemmanagement.service;
 
 import com.stored.storedsystemmanagement.dto.ProductRequestDTO;
 import com.stored.storedsystemmanagement.dto.ProductResponseDTO;
-import com.stored.storedsystemmanagement.entity.Category;
 import com.stored.storedsystemmanagement.entity.Product;
+import com.stored.storedsystemmanagement.entity.Category;
+import com.stored.storedsystemmanagement.entity.Store;
 import com.stored.storedsystemmanagement.repository.CategoryRepository;
 import com.stored.storedsystemmanagement.repository.ProductRepository;
+import com.stored.storedsystemmanagement.repository.StoreRepository;
 import lombok.RequiredArgsConstructor;
-
-import java.util.List;
-import java.util.stream.Collectors;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final StoreRepository storeRepository;
     private final CategoryRepository categoryRepository;
 
-    public ProductResponseDTO createProduct(ProductRequestDTO requestDTO) {
-        // 1. Kiểm tra mã SKU và Barcode xem có bị trùng không
-        if (productRepository.existsBySku(requestDTO.getSku())) {
-            throw new RuntimeException("Mã SKU đã tồn tại!");
-        }
-        if (requestDTO.getBarcode() != null && productRepository.existsByBarcode(requestDTO.getBarcode())) {
-            throw new RuntimeException("Mã vạch (Barcode) đã tồn tại!");
-        }
-
-        // 2. Tìm Danh mục trong DB xem có thật không
-        Category category = categoryRepository.findById(requestDTO.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy Danh mục với ID: " + requestDTO.getCategoryId()));
-
-        // 3. Chuyển DTO thành Entity
-        Product product = Product.builder()
-                .sku(requestDTO.getSku())
-                .barcode(requestDTO.getBarcode())
-                .productName(requestDTO.getProductName())
-                .costPrice(requestDTO.getCostPrice())
-                .sellingPrice(requestDTO.getSellingPrice())
-                .stockQuantity(requestDTO.getStockQuantity())
-                .minStockLevel(requestDTO.getMinStockLevel())
-                .category(category) // Nhét object Category tìm được vào đây
-                .build();
-
-        // 4. Lưu xuống DB
-        Product savedProduct = productRepository.save(product);
-
-        // 5. Trả kết quả về
-        return ProductResponseDTO.builder()
-                .id(savedProduct.getId())
-                .sku(savedProduct.getSku())
-                .barcode(savedProduct.getBarcode())
-                .productName(savedProduct.getProductName())
-                .sellingPrice(savedProduct.getSellingPrice())
-                .stockQuantity(savedProduct.getStockQuantity())
-                .categoryName(category.getCategoryName()) // Lấy tên danh mục trả về
-                .build();
-                
+    public List<ProductResponseDTO> getAllProductsByStore(Long storeId) {
+        List<Product> products = productRepository.findByStoreId(storeId);
+        return products.stream()
+                .map(product -> ProductResponseDTO.builder()
+                        .id(product.getId())
+                        .sku(product.getSku())
+                        .barcode(product.getBarcode())
+                        .productName(product.getProductName())
+                        .costPrice(product.getCostPrice())
+                        .sellingPrice(product.getSellingPrice())
+                        .stockQuantity(product.getStockQuantity())
+                        .minStockLevel(product.getMinStockLevel())
+                        .imageUrl(product.getImageUrl())
+                        .createdAt(product.getCreatedAt())
+                        .updatedAt(product.getUpdatedAt())
+                        .categoryName(product.getCategory() != null ? product.getCategory().getCategoryName() : null)
+                        .categoryId(product.getCategory() != null ? product.getCategory().getId() : null)
+                        .build())
+                .collect(Collectors.toList());
     }
 
-    public List<ProductResponseDTO> getAllProducts() {
-        return productRepository.findAll().stream().map(product -> 
-            ProductResponseDTO.builder()
-                .id(product.getId())
-                .sku(product.getSku())
-                .barcode(product.getBarcode())
-                .productName(product.getProductName())
-                .sellingPrice(product.getSellingPrice())
-                .stockQuantity(product.getStockQuantity())
-                .categoryName(product.getCategory().getCategoryName())
-                .build()
-        ).collect(Collectors.toList());
+    public Product getProductByIdAndStore(Long productId, Long storeId) {
+        return productRepository.findByIdAndStoreId(productId, storeId)
+                .orElseThrow(() -> new RuntimeException("Sản phẩm không tìm thấy"));
     }
-    // 1. HÀM CẬP NHẬT (SỬA GIÁ, TÊN, DANH MỤC)
+
     @Transactional
-    public ProductResponseDTO updateProduct(Long id, ProductRequestDTO requestDTO) {
-        // Tìm sản phẩm hiện tại
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm với ID: " + id));
+    public Product createProduct(ProductRequestDTO req, Long storeId) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new RuntimeException("Cửa hàng không hợp lệ"));
 
-        // Tìm danh mục mới (nếu có đổi)
-        Category category = categoryRepository.findById(requestDTO.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy Danh mục với ID: " + requestDTO.getCategoryId()));
+        // Logic tự động sinh mã SKU nếu người dùng để trống
+        String finalSku = req.getSku();
+        if (finalSku == null || finalSku.trim().isEmpty()) {
+            long count = productRepository.countByStoreId(storeId) + 1;
+            finalSku = String.format("SP%05d", count); // Sinh mã dạng SP00001
+        } else {
+            // Kiểm tra trùng mã SKU trong cùng 1 cửa hàng
+            if (productRepository.existsBySkuAndStoreId(finalSku, storeId)) {
+                throw new RuntimeException("Mã hàng hóa (SKU) đã tồn tại!");
+            }
+        }
 
-        // Tiến hành cập nhật các trường được phép sửa
-        product.setProductName(requestDTO.getProductName());
-        product.setCostPrice(requestDTO.getCostPrice());
-        product.setSellingPrice(requestDTO.getSellingPrice());
-        product.setMinStockLevel(requestDTO.getMinStockLevel());
-        product.setCategory(category);
-        
-        // Lưu ý: KHÔNG cho phép sửa sku, barcode và stockQuantity ở đây để bảo toàn dữ liệu
+        Category category = categoryRepository.findById(req.getCategoryId())
+                .orElseThrow(() -> new RuntimeException("Danh mục không tồn tại"));
+        if (category.getStore() == null || !category.getStore().getId().equals(storeId)) {
+            throw new RuntimeException("Danh mục không thuộc cửa hàng hiện tại");
+        }
 
-        Product updatedProduct = productRepository.save(product);
-
-        return ProductResponseDTO.builder()
-                .id(updatedProduct.getId())
-                .sku(updatedProduct.getSku())
-                .barcode(updatedProduct.getBarcode())
-                .productName(updatedProduct.getProductName())
-                .sellingPrice(updatedProduct.getSellingPrice())
-                .stockQuantity(updatedProduct.getStockQuantity()) // Vẫn giữ nguyên tồn kho cũ
-                .categoryName(category.getCategoryName())
+        Product product = Product.builder()
+                .sku(finalSku)
+                .barcode(req.getBarcode())
+                .productName(req.getProductName())
+                .costPrice(req.getCostPrice())
+                .sellingPrice(req.getSellingPrice())
+                .stockQuantity(req.getStockQuantity() != null ? req.getStockQuantity() : 0)
+                .minStockLevel(req.getMinStockLevel() != null ? req.getMinStockLevel() : 5)
+                .category(category)
+                .store(store)
                 .build();
+
+        return productRepository.save(product);
     }
 
-    // 2. HÀM XÓA SẢN PHẨM (CÓ BẢO VỆ KHÓA NGOẠI)
-    public void deleteProduct(Long id) {
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm với ID: " + id));
-        
-        try {
-            productRepository.delete(product);
-        } catch (Exception e) {
-            // Nếu sản phẩm đã từng được bán hoặc nhập, SQL sẽ cấm xóa. Ta bắt lỗi và báo câu tiếng Việt.
-            throw new RuntimeException("LỖI: Không thể xóa sản phẩm này vì đã phát sinh giao dịch (Bán/Nhập). KiotViet khuyên dùng tính năng 'Ngừng kinh doanh' thay vì xóa cứng!");
+    @Transactional
+    public Product updateProduct(Long productId, ProductRequestDTO req, Long storeId) {
+        Product existing = productRepository.findByIdAndStoreId(productId, storeId)
+                .orElseThrow(() -> new RuntimeException("Sản phẩm không tìm thấy hoặc không thuộc cửa hàng"));
+
+        if (!existing.getSku().equals(req.getSku()) && productRepository.existsBySkuAndStoreId(req.getSku(), storeId)) {
+            throw new RuntimeException("Mã hàng hóa (SKU) này đã được sử dụng trong cửa hàng");
         }
+
+        existing.setSku(req.getSku());
+        existing.setBarcode(req.getBarcode());
+        existing.setProductName(req.getProductName());
+        existing.setCostPrice(req.getCostPrice());
+        existing.setSellingPrice(req.getSellingPrice());
+        existing.setStockQuantity(req.getStockQuantity());
+        existing.setMinStockLevel(req.getMinStockLevel());
+
+        Category category = categoryRepository.findById(req.getCategoryId())
+                .orElseThrow(() -> new RuntimeException("Danh mục không tồn tại"));
+        if (category.getStore() == null || !category.getStore().getId().equals(storeId)) {
+            throw new RuntimeException("Danh mục không thuộc cửa hàng hiện tại");
+        }
+        existing.setCategory(category);
+
+        return productRepository.save(existing);
+    }
+
+    @Transactional
+    public void deleteProduct(Long productId, Long storeId) {
+        Product existing = productRepository.findByIdAndStoreId(productId, storeId)
+                .orElseThrow(() -> new RuntimeException("Sản phẩm không tìm thấy hoặc không thuộc cửa hàng"));
+        productRepository.delete(existing);
     }
 }

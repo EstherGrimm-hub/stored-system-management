@@ -1,7 +1,7 @@
 package com.stored.storedsystemmanagement.dto;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotEmpty;
+import javax.validation.Valid;
+import javax.validation.constraints.NotEmpty;
 import lombok.Data;
 import java.util.List;
 

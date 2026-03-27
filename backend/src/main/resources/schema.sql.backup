@@ -1,0 +1,23 @@
+-- Ensure store_id column in users can be NULL (needed for SELLER accounts without an assigned store)
+IF EXISTS (
+    SELECT 1 FROM sys.columns c
+    JOIN sys.objects o ON c.object_id = o.object_id
+    WHERE o.name = 'users'
+      AND c.name = 'store_id'
+      AND c.is_nullable = 0
+)
+BEGIN
+    ALTER TABLE users ALTER COLUMN store_id BIGINT NULL;
+END
+
+-- Add store_id to categories if not exists
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns c
+    JOIN sys.objects o ON c.object_id = o.object_id
+    WHERE o.name = 'categories'
+      AND c.name = 'store_id'
+)
+BEGIN
+    ALTER TABLE categories ADD store_id BIGINT;
+    ALTER TABLE categories ADD CONSTRAINT fk_categories_store FOREIGN KEY (store_id) REFERENCES stores(id);
+END

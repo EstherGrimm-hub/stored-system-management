@@ -1,7 +1,7 @@
 package com.stored.storedsystemmanagement.entity;
 
-import jakarta.persistence.*;
 import lombok.*;
+import javax.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class StockCard {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -20,20 +19,18 @@ public class StockCard {
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
-    @Column(nullable = false, length = 50)
-    private String referenceCode; // Mã kham chiếu (Chính là Mã Hóa Đơn HD0001 hoặc Mã Phiếu Nhập)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id", nullable = false)
+    private Store store;
 
-    @Column(nullable = false, length = 50)
-    private String transactionType; // Loại giao dịch: SELL (Bán), IMPORT (Nhập), RETURN (Trả)
-
-    @Column(nullable = false)
-    private Integer quantityChanged; // Số lượng thay đổi (Bán thì là số âm, Nhập thì là số dương)
-
-    @Column(nullable = false)
-    private Integer balance; // Tồn kho CÒN LẠI sau khi giao dịch (Rất quan trọng)
+    private String changeType; // Bán, Nhập, Khởi tạo
+    private int quantityChange;
+    private int balanceQuantity;
+    private String referenceCode;
+    private String note;
 
     @Column(updatable = false)
-    private LocalDateTime createdAt; // Thời gian phát sinh
+    private LocalDateTime createdAt;
 
     @PrePersist
     protected void onCreate() {

@@ -30,7 +30,7 @@ public class ImportService {
     @Transactional
     public String processImport(ImportRequestDTO requestDTO) {
         // 1. Khởi tạo phiếu nhập
-        String receiptCode = "PN" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        String receiptCode = "PN" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
         ImportReceipt receipt = ImportReceipt.builder()
                 .receiptCode(receiptCode)
                 .importDetails(new ArrayList<>())
@@ -68,9 +68,9 @@ public class ImportService {
             StockCard stockCard = StockCard.builder()
                     .product(product)
                     .referenceCode(receiptCode)
-                    .transactionType("IMPORT") // Loại giao dịch: Nhập hàng
-                    .quantityChanged(item.getQuantity()) // Nhập thêm nên mang dấu dương (+)
-                    .balance(product.getStockQuantity())
+                    .changeType("IMPORT") // Loại giao dịch: Nhập hàng
+                    .quantityChange(item.getQuantity()) // Nhập thêm nên mang dấu dương (+)
+                    .balanceQuantity(product.getStockQuantity())
                     .build();
             stockCardsToSave.add(stockCard);
         }

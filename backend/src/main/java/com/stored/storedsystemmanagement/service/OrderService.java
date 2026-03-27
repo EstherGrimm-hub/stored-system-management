@@ -1,106 +1,119 @@
 package com.stored.storedsystemmanagement.service;
 
-import com.stored.storedsystemmanagement.dto.OrderDetailRequestDTO;
+import com.stored.storedsystemmanagement.entity.*;
+import com.stored.storedsystemmanagement.repository.*;
 import com.stored.storedsystemmanagement.dto.OrderRequestDTO;
-import com.stored.storedsystemmanagement.entity.Order;
-import com.stored.storedsystemmanagement.entity.OrderDetail;
-import com.stored.storedsystemmanagement.entity.Product;
-import com.stored.storedsystemmanagement.entity.StockCard;
-import com.stored.storedsystemmanagement.repository.OrderRepository;
-import com.stored.storedsystemmanagement.repository.ProductRepository;
-import com.stored.storedsystemmanagement.repository.StockCardRepository;
+import com.stored.storedsystemmanagement.dto.OrderDetailRequestDTO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderService {
 
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final StockCardRepository stockCardRepository;
+    private final StoreRepository storeRepository;
+    private final UserRepository userRepository;
 
-    // Annotation SIÊU QUAN TRỌNG: Lỗi ở bất kỳ dòng nào sẽ Rollback toàn bộ dữ liệu
-    @Transactional 
-    public String checkoutProcess(OrderRequestDTO requestDTO) {
+    @Transactional(rollbackFor = Exception.class) // Đảm bảo tính toàn vẹn dữ liệu
+    public Order createRetailOrder(OrderRequestDTO req, Long storeId, Long userId) {
         
-        // 1. Khởi tạo Hóa đơn
-        String orderCode = "HD" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new RuntimeException("Cửa hàng không tồn tại"));
+        User cashier = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Thu ngân không tồn tại"));
+
+        // 1. Tạo vỏ hóa đơn (Khách vãng lai) với mã duy nhất
+        String orderCode;
+        do {
+            orderCode = "HD" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
+        } while (orderRepository.existsByOrderCode(orderCode));
+
         Order order = Order.builder()
                 .orderCode(orderCode)
+                .store(store)
+                .createdBy(cashier)
+                .totalAmount(BigDecimal.ZERO)
+                .discountAmount(req.getDiscountAmount() != null ? req.getDiscountAmount() : BigDecimal.ZERO)
+                .finalAmount(BigDecimal.ZERO)
+                .customerTendered(req.getCustomerTendered())
                 .status("COMPLETED")
-                .discountAmount(requestDTO.getDiscountAmount() != null ? requestDTO.getDiscountAmount() : BigDecimal.ZERO)
-                .customerTendered(requestDTO.getCustomerTendered())
                 .orderDetails(new ArrayList<>())
                 .build();
 
-        BigDecimal totalAmount = BigDecimal.ZERO;
-        List<StockCard> stockCardsToSave = new ArrayList<>();
-        List<Product> productsToUpdate = new ArrayList<>();
+        order = orderRepository.save(order); // Thực sự tạo đơn trước để tránh FK order_id null trong chi tiết
 
-        // 2. Xử lý từng món hàng trong giỏ
-        for (OrderDetailRequestDTO item : requestDTO.getItems()) {
-            Product product = productRepository.findById(item.getProductId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm ID: " + item.getProductId()));
+        BigDecimal calculatedTotal = BigDecimal.ZERO;
+
+        // 2. Xử lý logic cho từng món hàng trong giỏ
+        for (OrderDetailRequestDTO itemReq : req.getItems()) {
+            Product product = productRepository.findByIdAndStoreId(itemReq.getProductId(), storeId)
+                    .orElseThrow(() -> new RuntimeException("Sản phẩm không hợp lệ"));
 
             // Kiểm tra tồn kho
-            if (product.getStockQuantity() < item.getQuantity()) {
-                throw new RuntimeException("Sản phẩm '" + product.getProductName() + "' không đủ tồn kho! Chỉ còn: " + product.getStockQuantity());
+            if (product.getStockQuantity() < itemReq.getQuantity()) {
+                throw new RuntimeException("Sản phẩm '" + product.getProductName() + "' chỉ còn " + product.getStockQuantity() + " trong kho!");
             }
 
-            // Tính tiền món này (Giá bán lúc này * Số lượng)
-            BigDecimal subTotal = product.getSellingPrice().multiply(new BigDecimal(item.getQuantity()));
-            totalAmount = totalAmount.add(subTotal);
-
-            // Tạo Chi tiết hóa đơn
-            OrderDetail orderDetail = OrderDetail.builder()
-                    .order(order)
-                    .product(product)
-                    .quantity(item.getQuantity())
-                    .unitPrice(product.getSellingPrice())
-                    .subTotal(subTotal)
-                    .build();
-            order.getOrderDetails().add(orderDetail);
-
             // Trừ tồn kho
-            product.setStockQuantity(product.getStockQuantity() - item.getQuantity());
-            productsToUpdate.add(product);
+            product.setStockQuantity(product.getStockQuantity() - itemReq.getQuantity());
+            productRepository.save(product);
 
-            // Ghi Thẻ kho
+            // Ghi thẻ kho
             StockCard stockCard = StockCard.builder()
                     .product(product)
-                    .referenceCode(orderCode)
-                    .transactionType("SELL") // Loại giao dịch: Bán hàng
-                    .quantityChanged(-item.getQuantity()) // Bán đi nên mang dấu âm
-                    .balance(product.getStockQuantity())  // Tồn kho CÒN LẠI
+                    .store(store)
+                    .changeType("SELL") // Loại giao dịch: Bán hàng
+                    .quantityChange(-itemReq.getQuantity()) // Số lượng âm (xuất kho)
+                    .balanceQuantity(product.getStockQuantity()) // Tồn kho cuối cùng
+                    .referenceCode(order.getOrderCode())
+                    .note("Bán lẻ cho khách vãng lai")
                     .build();
-            stockCardsToSave.add(stockCard);
+            stockCardRepository.save(stockCard);
+
+            // Tính tiền và tạo chi tiết hóa đơn
+            BigDecimal itemTotal = product.getSellingPrice().multiply(BigDecimal.valueOf(itemReq.getQuantity()));
+            calculatedTotal = calculatedTotal.add(itemTotal);
+
+            OrderDetail detail = OrderDetail.builder()
+                    .order(order)
+                    .product(product)
+                    .quantity(itemReq.getQuantity())
+                    .unitPrice(product.getSellingPrice())
+                    .totalPrice(itemTotal)
+                    .build();
+
+            order.getOrderDetails().add(detail);
         }
 
-        // 3. Tính toán lại tổng tiền hóa đơn
-        BigDecimal finalAmount = totalAmount.subtract(order.getDiscountAmount());
-        if (finalAmount.compareTo(BigDecimal.ZERO) < 0) finalAmount = BigDecimal.ZERO;
+        // 3. Tính toán dòng tiền cuối cùng
+        order.setTotalAmount(calculatedTotal);
+        order.setFinalAmount(calculatedTotal.subtract(order.getDiscountAmount()));
+        order.setCustomerTendered(req.getCustomerTendered());
+        order.setChangeAmount(order.getCustomerTendered().subtract(order.getFinalAmount()));
 
-        if (requestDTO.getCustomerTendered().compareTo(finalAmount) < 0) {
-            throw new RuntimeException("Khách đưa không đủ tiền! Cần trả: " + finalAmount);
+        if (order.getCustomerTendered().compareTo(order.getFinalAmount()) < 0) {
+            throw new RuntimeException("Khách thanh toán chưa đủ tiền!");
         }
 
-        order.setTotalAmount(totalAmount);
-        order.setFinalAmount(finalAmount);
-        order.setChangeAmount(requestDTO.getCustomerTendered().subtract(finalAmount)); // Tính tiền thối
-
-        // 4. LƯU TẤT CẢ XUỐNG DATABASE
-        orderRepository.save(order); // Lưu order sẽ tự động lưu luôn OrderDetail nhờ cascade=ALL
-        productRepository.saveAll(productsToUpdate);
-        stockCardRepository.saveAll(stockCardsToSave);
-
-        return "Thanh toán thành công! Mã hóa đơn: " + orderCode;
+        try {
+            return orderRepository.save(order);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            String causeMsg = e.getMostSpecificCause() != null ? e.getMostSpecificCause().getMessage() : e.getMessage();
+            log.error("Constraint violation khi tạo đơn bán lẻ: {}", causeMsg, e);
+            throw new RuntimeException("Lỗi ràng buộc dữ liệu khi tạo đơn: " + causeMsg, e);
+        } catch (Exception e) {
+            log.error("Lỗi bất ngờ khi tạo đơn bán lẻ: {}", e.getMessage(), e);
+            throw new RuntimeException("Lỗi hệ thống khi tạo đơn bán lẻ. Vui lòng thử lại sau.", e);
+        }
     }
 }

@@ -1,121 +1,171 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+
+// Import Layout
+import AdminLayout from './layouts/AdminLayout';
+
+// Import các Trang (Pages)
+import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
+import Home from './pages/user/Home';
+import POS from './pages/user/POS';
+import CreateStore from './pages/user/CreateStore';
+import Dashboard from './pages/admin/Dashboard';
+import Products from './pages/admin/Products';
+import Orders from './pages/admin/Orders';
+import Inventory from './pages/admin/Inventory';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import UserManagement from './pages/admin/UserManagement';
+import UserDetail from './pages/admin/UserDetail';
+import StoreDetail from './pages/admin/StoreDetail';
+import ImpersonateDashboard from './pages/admin/ImpersonateDashboard';
+
+// Một component nhỏ để bảo vệ Route, nếu chưa có Token thì đá ra trang Login
+const ProtectedRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
+
+// Component để bảo vệ Route dành cho Admin (Super Admin)
+const AdminRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  const user = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null;
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user?.role !== 'ADMIN') {
+    return <Navigate to="/home" replace />;
+  }
+
+  return children;
+};
+
+// Component để bảo vệ Route dành cho User (Store Owner)
+const UserRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  const user = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null;
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user?.role === 'ADMIN') {
+    return <Navigate to="/admin/super-dashboard" replace />;
+  }
+
+  const hasStore = !!user?.storeId || user?.hasStore;
+  if (!hasStore) {
+    return <Navigate to="/home" replace />;
+  }
+
+  return children;
+};
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
+    <BrowserRouter>
+      <Routes>
+        {/* ROUTE PUBLIC */}
+        <Route path="/" element={<Home />} />
+        <Route path="/home" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        
+        {/* ROUTE THU NGÂN - CHỈ DÀNH CHO STORE OWNER (User Role) */}
+        <Route 
+          path="/pos" 
+          element={
+            <UserRoute>
+              <POS />
+            </UserRoute>
+          } 
+        />
+        <Route
+          path="/create-store"
+          element={
+            <ProtectedRoute>
+              <CreateStore />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ROUTE QUẢN LÝ STORE - DÀNH CHO STORE OWNER (User Role) */}
+        <Route 
+          path="/admin" 
+          element={
+            <UserRoute>
+              <AdminLayout />
+            </UserRoute>
+          }
         >
-          Count is {count}
-        </button>
-      </section>
+          {/* Mặc định vào /admin sẽ chuyển hướng sang dashboard */}
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="products" element={<Products />} />
+          <Route path="orders" element={<Orders />} />
+          <Route path="inventory" element={<Inventory />} />
+        </Route>
 
-      <div className="ticks"></div>
+        {/* ROUTE SUPER ADMIN DASHBOARD - CHỈ DÀNH CHO ADMIN (Admin Role) */}
+        <Route 
+          path="/admin/super-dashboard" 
+          element={
+            <AdminRoute>
+              <AdminDashboard />
+            </AdminRoute>
+          } 
+        />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        {/* ROUTE QUẢN LÝ USER - CHỈ DÀNH CHO ADMIN (Admin Role) */}
+        <Route 
+          path="/admin/users" 
+          element={
+            <AdminRoute>
+              <UserManagement />
+            </AdminRoute>
+          } 
+        />
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+        {/* ROUTE CHI TIẾT USER - CHỈ DÀNH CHO ADMIN */}
+        <Route 
+          path="/admin/user-detail/:id" 
+          element={
+            <AdminRoute>
+              <UserDetail />
+            </AdminRoute>
+          } 
+        />
+
+        {/* ROUTE CHI TIẾT STORE - CHỈ DÀNH CHO ADMIN */}
+        <Route 
+          path="/admin/store-detail/:id" 
+          element={
+            <AdminRoute>
+              <StoreDetail />
+            </AdminRoute>
+          } 
+        />
+
+        {/* ROUTE IMPLICITATION STORE USER - CHỈ DÀNH CHO ADMIN */}
+        <Route
+          path="/admin/super-dashboard/impersonate/:userId"
+          element={
+            <AdminRoute>
+              <ImpersonateDashboard />
+            </AdminRoute>
+          }
+        />
+
+        {/* Bắt các route không tồn tại (404) */}
+        <Route path="*" element={<Navigate to="/home" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;
